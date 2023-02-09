@@ -1,7 +1,12 @@
 #include <Servo.h>
 
-//#define ENABLE_RADAR
+#define ENABLE_RADAR
 #define ENABLE_MOTORS
+
+
+// circonferenza ruote (cm)
+#define WHELL_CIRC 21
+
 
 // servo
 #define SERVO_PIN 5
@@ -73,7 +78,7 @@ void init_loc(){
 }
 
 // print array (al monitor seriale)
-void printa(size_t size, int *arr){
+void printa(size_t size, int arr[]){
   for(int i=0; i<size; i++){
     Serial.print(arr[i]);
     Serial.print(" ");
@@ -111,6 +116,7 @@ int readDistance_int(){
   return distance;
 }
 
+
 // scan deprecato
 void scan(){
   for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
@@ -132,15 +138,24 @@ void scan(){
 //  arr: l'array in cui verranno memorizzate le misurazioni (viene riallocato)
 void scanSteps(int steps, int *arr){
   arr = calloc(steps, sizeof(int));
-  for (pos = 0; pos <= 180-1; pos += (180-1)/steps) { // goes from 0 degrees to 180 degrees
-    //myservo.attach(SERVO_PIN);
-    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-    //myservo.detach();
+
+  for(int i = 0; i<steps; i++){
+    pos = 180/steps*i;
+    myservo.write(pos);              
     int distance = readDistance_int();
-    arr[pos] = distance;
-    Serial.println(distance);
-    delay(400);                       
+    arr[i] = distance;
+
+    char buf[50];
+    sprintf(buf, "a[%d] = %d (%d) (pos=%d)\n", i, arr[i], distance, pos);
+    Serial.print(buf);
+
+    delay(500);                       
   }
+  printa(steps, arr);
+}
+
+void updateMap(){
+
 }
 
 // ferma le ruote
@@ -295,20 +310,10 @@ void rotate_times(int clicks, void (*fun_rot)(), int (*fun_hall)()){
   stop();
 }
 
-
 // Riposiziona le ruote sul primo punto di appoggio disponibile
-
 void calibrate_hall(){
   rotate_times(1, right, read_hall_r);
   rotate_times(1, left, read_hall_l);
-}
-
-void light_sensor_test(){
-  Serial.print("- ");
-  right();
-  int val = analogRead(A3);
-  Serial.println(val);  
-  
 }
 
 void setup() {
@@ -339,15 +344,15 @@ void setup() {
   Serial.println("---begin---");
   myservo.write(pos); //riposiziona servo
 
-  //calibrate_hall(); //riposizioniamo le ruote
+  calibrate_hall(); //riposizioniamo le ruote
   delay(2000); //per riposizionare la macchinina
 }
 
 void loop() {
-  
-  // int *arr;
-  // scanSteps(10, arr);
-  // printa(10, arr);
+
+  int *arr;
+  scanSteps(10, arr);
+  printa(10, arr);
   
   // wheels_test_hall();
   // delay(1000);
@@ -364,8 +369,6 @@ void loop() {
   // rotate_times(1, forw, read_hall_l); //21 cm
   // delay(1000);
   
-  light_sensor_test();
-  delay(10);
   
   // myservo.write(0);
   // delay(400); 
