@@ -25,10 +25,12 @@
 #define lf 11 // left forwards
 #define lb 12 // left backwards
 
+
+// dimensioni della mappa 
 #define WIDTH 21
 #define LENGTH 21
 
-// variabil per il sensore ultrasonico
+// variabili per il sensore ultrasonico
 long duration;  // variable for the duration of sound wave 
 int distance;   // variable for the distance measurement
 
@@ -37,14 +39,13 @@ Servo myservo;
 int pos = 0;  //posizione corrente del servo
 
 struct location {
-  int x;
-  int y;
-  short **map;
+  int x;        // x corrente
+  int y;        // y corrente
+  short **map;  //matrice che rappresenta la mappa dell'ambiente circostante
 };
-
 struct location *loc;
 
-// stampa la mappa. 
+// stampa la mappa (sul monitor seriale). 
 void p_map(){
   char buf[5];
   for(short i=0; i<LENGTH; i++){
@@ -77,7 +78,7 @@ void init_loc(){
   }  
 }
 
-// print array (al monitor seriale)
+// print array (sul monitor seriale)
 void printa(size_t size, int arr[]){
   for(int i=0; i<size; i++){
     Serial.print(arr[i]);
@@ -86,7 +87,7 @@ void printa(size_t size, int arr[]){
   Serial.println("");
 }
 
-// mostra su console seriale la distanza misurata dal sensore ultrasonico in centimetri
+// mostra sul monitor seriale la distanza misurata dal sensore ultrasonico in centimetri
 void readDistance(){
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -100,7 +101,7 @@ void readDistance(){
   Serial.println(" cm");
 }
 
-// legge la distanza misurata dal sensore ultrasonico in centimetri
+// restituisce la distanza misurata dal sensore ultrasonico in centimetri
 int readDistance_int(){
 
   digitalWrite(trigPin, LOW);
@@ -132,26 +133,26 @@ void scan(){
   } 
 }
 
-// scannerizza di 180 gradi l'ambiente verso il quale è rivolto il rover
+// scannerizza i 180 gradi d'ambiente verso il quale è rivolto il rover. 
+// Le misurazioni vengono restituite in centimetri.
 // params:
-//  steps: il numero di misurazioni
+//  steps: il numero di misurazioni da prendere
 //  arr: l'array in cui verranno memorizzate le misurazioni (viene riallocato)
-void scanSteps(int steps, int *arr){
-  arr = calloc(steps, sizeof(int));
+void scanSteps(int steps, int **arr){
+  *arr = (int*) calloc(steps, sizeof(int));
 
   for(int i = 0; i<steps; i++){
     pos = 180/steps*i;
     myservo.write(pos);              
     int distance = readDistance_int();
-    arr[i] = distance;
+    (*arr)[i] = distance;
 
-    char buf[50];
-    sprintf(buf, "a[%d] = %d (%d) (pos=%d)\n", i, arr[i], distance, pos);
-    Serial.print(buf);
+    //char buf[50];
+    //sprintf(buf, "a[%d] = %d (%d) (pos=%d)\n", i, (*arr)[i], distance, pos);
+    //Serial.print(buf);
 
-    delay(500);                       
+    delay(800);                       
   }
-  printa(steps, arr);
 }
 
 void updateMap(){
@@ -166,7 +167,7 @@ void stop(){
   digitalWrite(lb, LOW);
 }
 
-// muovla ruota destra avanti
+// muove la ruota destra avanti
 void right(){
   digitalWrite(rf, HIGH);
 }
@@ -253,6 +254,7 @@ void wheels_test_hall(){
   delay(1000);
 }
 
+//test sensori di hall deprecato
 void read_hall(int ms){
   for(int i=0; i<ms; i++){
     if(i%50==0){
@@ -282,9 +284,9 @@ int read_hall_l(){
   return digitalRead(hall_pin_l);
 }
 
-// ruota la/e ruota/e clicks volte.
+// ruota la/e ruota/e clicks punti di appoggio (magneti).
 // params:
-//   clicks: il numero di punti d'appoggio da contare
+//   clicks: il numero di punti d'appoggio da contare 
 //   fun_rot: la funzione di rotazione
 //   fun_hall: la funzione di lettura del valore del sensore di hall
 void rotate_times(int clicks, void (*fun_rot)(), int (*fun_hall)()){
@@ -350,8 +352,8 @@ void setup() {
 
 void loop() {
 
-  int *arr;
-  scanSteps(10, arr);
+  int *arr = NULL;
+  scanSteps(10, &arr);
   printa(10, arr);
   
   // wheels_test_hall();
