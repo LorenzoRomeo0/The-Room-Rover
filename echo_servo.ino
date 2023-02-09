@@ -303,7 +303,17 @@ void calibrate_hall(){
   rotate_times(1, left, read_hall_l);
 }
 
+void light_sensor_test(){
+  Serial.print("- ");
+  right();
+  int val = analogRead(A3);
+  Serial.println(val);  
+  
+}
+
 void setup() {
+  pinMode(A3,INPUT);
+
   #ifdef ENABLE_RADAR
     myservo.attach(SERVO_PIN);
     pinMode(trigPin, OUTPUT); 
@@ -329,7 +339,7 @@ void setup() {
   Serial.println("---begin---");
   myservo.write(pos); //riposiziona servo
 
-  calibrate_hall(); //riposizioniamo le ruote
+  //calibrate_hall(); //riposizioniamo le ruote
   delay(2000); //per riposizionare la macchinina
 }
 
@@ -351,9 +361,11 @@ void loop() {
   // rotate_times(10, right, read_hall_r);
   // delay(2000);
 
-  rotate_times(1, forw, read_hall_l); //21 cm
-  delay(1000);
+  // rotate_times(1, forw, read_hall_l); //21 cm
+  // delay(1000);
   
+  light_sensor_test();
+  delay(10);
   
   // myservo.write(0);
   // delay(400); 
