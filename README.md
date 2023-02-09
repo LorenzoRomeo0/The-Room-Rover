@@ -2,7 +2,7 @@
 
 Autore: Lorenzo Romeo
 
-Descrizione: The Room Rover è un piccolo rover in grado di mappare una stanza e successivamente di navigarla autonomamente.
+Descrizione: The Room Rover è un piccolo veicolo in grado di mappare una stanza e successivamente di navigarla autonomamente.
 Il suo funzionamento prevede due fasi principali: 
 - La mappatura dell'ambiente: effettuata mediante un "radar" composto da un servo ed un sensore ultrasonico;
 - L'esplorazione dell'ambiente: effettuata usando le informazioni ottenute nella fase di mappatura, accompagnata da eventuali rifiniture periodiche della mappa.
