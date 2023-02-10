@@ -27,8 +27,11 @@
 
 
 // dimensioni della mappa 
-#define WIDTH 21
-#define LENGTH 21
+#define SIZE 21
+
+#define MEASURE_NR 21
+#define UNIT 10
+#define SCAN_STEP_TIME 500
 
 // variabili per il sensore ultrasonico
 long duration;  // variable for the duration of sound wave 
@@ -48,8 +51,8 @@ struct location *loc;
 // stampa la mappa (sul monitor seriale). 
 void p_map(){
   char buf[5];
-  for(short i=0; i<LENGTH; i++){
-    for(short j=0; j<WIDTH; j++){
+  for(short i=0; i<SIZE; i++){
+    for(short j=0; j<SIZE; j++){
       if(loc -> x == i && loc -> y == j){
         Serial.print("  x ");
         continue;
@@ -64,22 +67,31 @@ void p_map(){
 //inizializza la matrice della mappa. Imposta i limiti della matrice a -1 (ostacolo invalicabile)
 void init_loc(){
   loc = malloc(sizeof(struct location));
-  loc -> x = LENGTH/2;
-  loc -> y = WIDTH/2;
-  loc -> map = (short**) calloc(LENGTH, sizeof(short*));
-  for(short i = 0; i<WIDTH; i++){
-    loc -> map[i] = (short*) calloc(WIDTH, sizeof(short));
+  loc -> x = SIZE/2;
+  loc -> y = SIZE/2;
+  loc -> map = (short**) calloc(SIZE, sizeof(short*));
+  for(short i = 0; i<SIZE; i++){
+    loc -> map[i] = (short*) calloc(SIZE, sizeof(short));
   }
 
-  for(short i=0; i<LENGTH; i++){
-    for(short j=0; j<WIDTH; j++){
-      if(i == 0 || j == 0 || i==WIDTH-1 || j==LENGTH-1) loc->map[i][j] = -1;
+  for(short i=0; i<SIZE; i++){
+    for(short j=0; j<SIZE; j++){
+      if(i == 0 || j == 0 || i==SIZE-1 || j==SIZE-1) loc->map[i][j] = -1;
     }
   }  
 }
 
-// print array (sul monitor seriale)
+// print (int) array (sul monitor seriale)
 void printa(size_t size, int arr[]){
+  for(int i=0; i<size; i++){
+    Serial.print(arr[i]);
+    Serial.print(" ");
+  }
+  Serial.println("");
+}
+
+// print double array (sul monitor seriale)
+void printa_d(size_t size, double arr[]){
   for(int i=0; i<size; i++){
     Serial.print(arr[i]);
     Serial.print(" ");
@@ -117,7 +129,6 @@ int readDistance_int(){
   return distance;
 }
 
-
 // scan deprecato
 void scan(){
   for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
@@ -137,7 +148,7 @@ void scan(){
 // Le misurazioni vengono restituite in centimetri.
 // params:
 //  steps: il numero di misurazioni da prendere
-//  arr: l'array in cui verranno memorizzate le misurazioni (viene riallocato)
+//  arr: puntatore all'array in cui verranno memorizzate le misurazioni (viene riallocato)
 void scanSteps(int steps, int **arr){
   *arr = (int*) calloc(steps, sizeof(int));
 
@@ -151,12 +162,54 @@ void scanSteps(int steps, int **arr){
     //sprintf(buf, "a[%d] = %d (%d) (pos=%d)\n", i, (*arr)[i], distance, pos);
     //Serial.print(buf);
 
-    delay(800);                       
+    delay(SCAN_STEP_TIME);                       
   }
 }
 
-void updateMap(){
+void calc_radians(int size, double **arr){
+  *arr = (double*) calloc(size, sizeof(double));
+  for(int i=0; i<size; i++)
+    (*arr)[i] = (180/(size)*i)*2*3.14159265358979323846/360;
+}
 
+void calc_angles(int size, double **arr){
+  *arr = (double*) calloc(size, sizeof(double));
+  for(int i=0; i<size; i++)
+    (*arr)[i] = 180/(size)*i;
+}
+
+// void updateMap(int size, int *r){
+//   double *theta = NULL;
+//   calc_radians(size, &theta);
+//   printa_d(size, theta);
+
+//   for(int i=0; i<size; i++){
+//     double x = -(r[i]/UNIT)*cos(theta[i]) + loc->x;
+//     double y = -(r[i]/UNIT)*sin(theta[i]) + loc->y;
+
+
+
+//     printf("[%f] (%d) -> x=%lf y=%lf\n", theta[i], r[i], x, y);
+//     if(x < SIZE && x >= 0 && y< SIZE && y >= 0){
+//       loc->map[(int)y][(int)x] = -1;
+//     }
+//   }
+// }
+
+void updateMap(int size, int *r){
+  double *theta = NULL;
+  calc_angles(size, &theta);
+  printa_d(size, theta);
+
+  for(int i=0; i<size; i++){
+    int x = floor(-(r[i]/UNIT) * cos(theta[i] * M_PI / 180) + loc->x);
+    int y = floor(-(r[i]/UNIT) * sin(theta[i] * M_PI / 180) + loc->y);
+
+    printf("[%f] (%d) -> x=%lf y=%lf\n", theta[i], r[i], x, y);
+    if(x < SIZE && x >= 0 && y< SIZE && y >= 0){
+      loc->map[y][x] = -1;
+    }
+  }
 }
 
 // ferma le ruote
@@ -196,6 +249,11 @@ void forw(){
 // muove indietro
 void backw(){
   bright();
+  bleft();
+}
+
+void rotate(){
+  right();
   bleft();
 }
 
@@ -337,8 +395,10 @@ void setup() {
   pinMode(hall_pin_l, INPUT);
 
 
-  Serial.begin(9600);
-
+  //Serial.begin(9600);
+  Serial.begin(19200);
+  //Serial.begin(31250);
+  
   //inizializza e visualizza mappa 
   init_loc();
   p_map();
@@ -347,14 +407,26 @@ void setup() {
   myservo.write(pos); //riposiziona servo
 
   calibrate_hall(); //riposizioniamo le ruote
+
+
+  
+
+
   delay(2000); //per riposizionare la macchinina
 }
 
 void loop() {
 
-  int *arr = NULL;
-  scanSteps(10, &arr);
-  printa(10, arr);
+  // int *arr = NULL;
+  // scanSteps(MEASURE_NR, &arr);
+  // printa(MEASURE_NR, arr);
+  
+  // updateMap(MEASURE_NR, arr);
+  // p_map();
+
+  rotate_times(3, rotate, read_hall_r);
+  delay(10000);
+  
   
   // wheels_test_hall();
   // delay(1000);
