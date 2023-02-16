@@ -31,7 +31,7 @@
 
 #define MEASURE_NR 21
 #define UNIT 10
-#define SCAN_STEP_TIME 300
+#define SCAN_STEP_TIME 400
 
 // variabili per il sensore ultrasonico
 long duration;  // variable for the duration of sound wave
@@ -57,13 +57,14 @@ struct location *loc;
 // stampa la mappa (sul monitor seriale).
 void p_map() {
   char buf[5];
-  for (short i = 0; i < SIZE; i++) {
-    for (short j = 0; j < SIZE; j++) {
+  for (byte i = 0; i < SIZE; i++) {
+    for (byte j = 0; j < SIZE; j++) {
       if (loc->x == i && loc->y == j) {
-        Serial.print("  x ");
+        Serial.print("  O ");
         continue;
       }
-      sprintf(buf, "%3d ", loc->map[i][j]);
+      sprintf(buf, "%s", (loc->map[i][j]==-1)?"  X ":"    ");
+      //sprintf(buf, "%3d ", loc->map[i][j]);
       Serial.print(buf);
     }
     Serial.println(" ");
@@ -226,6 +227,7 @@ void updateMap(int size, int *r) {
       loc->map[y][x] = -1;
     }
   }
+  free(theta);
 }
 
 // ferma le ruote
@@ -425,7 +427,7 @@ void setup() {
   p_map();
 
   Serial.println("---begin---");
-  myservo.write(pos);  //riposiziona servo
+  //myservo.write(pos);  //riposiziona servo
 
   calibrate_hall();  //riposizioniamo le ruote
 
@@ -438,27 +440,36 @@ void setup() {
 
 void loop() {
 
-  int *arr = NULL;
-  scanSteps(MEASURE_NR, &arr);
-  printa(MEASURE_NR, arr);
-  updateMap(MEASURE_NR, arr);
-  //free(arr);
-  //p_map();
-  rotate_times(7, rotate_counterclockwise, read_hall_l);
-  loc -> orient = South;
+  // int *arr = NULL;
+  // scanSteps(MEASURE_NR, &arr);
 
-  scanSteps(MEASURE_NR, &arr);  
-  printa(MEASURE_NR, arr);
-  updateMap(MEASURE_NR, arr);
-  p_map();
+  // printa(MEASURE_NR, arr);
+  // updateMap(MEASURE_NR, arr);
+  // free(arr);
+
+  // //p_map();
+  // rotate_times(7, rotate_counterclockwise, read_hall_l);
+  // loc -> orient = South;
+
+  // scanSteps(MEASURE_NR, &arr);  
+  // printa(MEASURE_NR, arr);
+  // updateMap(MEASURE_NR, arr);
+  // free(arr);
+  // p_map();
   
-  delay(5000);
+  // rotate_times(7, rotate_clockwise, read_hall_l);
+  // loc->orient=North;
+
+  // delay(1000);
 
 
   // rotate_times(7, rotate_counterclockwise, read_hall_l);
   // delay(5000);
-  // rotate_times(7, rotate_clockwise, read_hall_r);
-  // delay(10000);
+  // rotate_times(7, rotate_clockwise, read_hall_l);
+  // delay(5000);
+  
+  // rotate_times(4, forw, read_hall_r);
+  // delay(5000);
 
 
   // left();
