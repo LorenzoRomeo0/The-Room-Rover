@@ -393,6 +393,15 @@ void rotate_times(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
   stop();
 }
 
+void clock45(){
+  rotate_times(3, rotate_clockwise(), read_hall_r());
+}
+
+void counter45(){
+
+}
+
+
 // Riposiziona le ruote sul primo punto di appoggio disponibile
 void calibrate_hall() {
   rotate_times(1, right, read_hall_r);
