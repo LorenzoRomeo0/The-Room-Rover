@@ -393,6 +393,24 @@ void rotate_times(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
   stop();
 }
 
+// come rotate_times, però con doppia precisione. 
+// prende in considerazione sia i punti in cui è presente il magnete che non.
+// params:
+//   clicks: il numero di punti d'appoggio da contare
+//   fun_rot: la funzione di rotazione
+//   fun_hall: la funzione di lettura del valore del sensore di hall
+void rotate_times_2x(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
+  int hall_state = fun_hall();
+  int hall_measurement = 0;
+  while (clicks--) {
+    do {
+      fun_rot();
+      hall_measurement = fun_hall();
+    } while(hall_state == hall_measurement);
+  }
+  stop();
+}
+
 void clock45(){
   rotate_times(3, rotate_clockwise(), read_hall_r());
 }
