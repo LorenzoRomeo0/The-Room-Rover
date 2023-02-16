@@ -1,4 +1,4 @@
-### The Room Rover
+## The Room Rover
 
 Autore: Lorenzo Romeo
 
@@ -24,3 +24,6 @@ Link a repo: https://github.com/LorenzoRomeo0/The-Room-Rover
 Licenza scelta: GPLv3 (https://www.gnu.org/licenses/licenses.html)
 
 Data stimata di presentazione: Febbraio 2023
+
+### Circuito 
+![](The_Room_Rover.png)
