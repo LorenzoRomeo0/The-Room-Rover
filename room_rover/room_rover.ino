@@ -1,6 +1,6 @@
 #include <Servo.h>
 
-#define ENABLE_RADAR
+//#define ENABLE_RADAR
 #define ENABLE_MOTORS
 
 
@@ -18,6 +18,15 @@
 // sensori hall effect
 #define hall_pin_r A0
 #define hall_pin_l A1
+
+#define photo_pin_r A4
+#define photo_pin_l A3
+
+int max_photo_r = 0;
+int min_photo_r = 0;
+
+int max_photo_l = 0;
+int min_photo_l = 0;
 
 // controlli per il ponte h
 #define rf 10  // right forward
@@ -411,12 +420,23 @@ void rotate_times_2x(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
   stop();
 }
 
+int delay_45= 150;
 void clock45(){
-  rotate_times(3, rotate_clockwise(), read_hall_r());
+  rotate_times(3, rotate_clockwise, read_hall_r);
+  //delay(1000);
+  rotate_clockwise();
+  delay(delay_45);
+  stop();
+  //rotate_times_2x(1, rotate_clockwise, read_hall_r);
+
 }
 
 void counter45(){
-
+  rotate_times(3, rotate_counterclockwise, read_hall_r);
+  //delay(1000);
+  rotate_counterclockwise();
+  delay(delay_45);
+  stop();
 }
 
 
@@ -424,6 +444,34 @@ void counter45(){
 void calibrate_hall() {
   rotate_times(1, right, read_hall_r);
   rotate_times(1, left, read_hall_l);
+}
+
+void calibrate_photo(){
+  int maxl = 0;
+  int minl = 2000;
+  int maxr = 0;
+  int minr = 2000;
+  int current_val = 0;
+
+  forw();
+
+  for(int i=0; i<50; i++){
+    current_val = analogRead(photo_pin_l);
+    if(current_val > maxl) maxl=current_val;
+    if(current_val < minl) minl=current_val;
+    current_val = analogRead(photo_pin_r);
+    if(current_val > maxr) maxr=current_val;
+    if(current_val < minr) minr=current_val;
+    delay(50);
+  }
+  stop();
+  char buf[20];
+  sprintf(buf, "r=[%d,%d,%d] l=[%d,%d,%d]", minr, maxr, (minr+maxr)/2, minl, maxl, (minl+maxl)/2);
+  min_photo_l = minl;
+  max_photo_l = maxl;
+  min_photo_r = minr;
+  max_photo_r = maxr;
+  Serial.println(buf);  
 }
 
 void setup() {
@@ -444,6 +492,8 @@ void setup() {
   pinMode(hall_pin_r, INPUT);
   pinMode(hall_pin_l, INPUT);
 
+  pinMode(photo_pin_l, INPUT);
+  pinMode(photo_pin_r, INPUT);
 
   //Serial.begin(9600);
   Serial.begin(19200);
@@ -454,15 +504,129 @@ void setup() {
   p_map();
 
   Serial.println("---begin---");
-  //myservo.write(pos);  //riposiziona servo
+  myservo.write(pos);  //riposiziona servo
 
-  calibrate_hall();  //riposizioniamo le ruote
-
+  //calibrate_hall();  //riposizioniamo le ruote
+  calibrate_photo();
 
 
 
 
   delay(2000);  //per riposizionare la macchinina
+}
+
+void read_photo_l(){
+  return (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
+}
+
+void read_photo_r(){
+  return (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
+}
+
+void rotate_times_photo(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
+  //Serial.println(analogRead(A3));
+  int init_hall_state = (analogRead(A3)>900)?1:0;
+  int hall_state = 0;
+  while (clicks--) {
+    if (init_hall_state) {
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)<900)?1:0;
+        Serial.println(analogRead(A3));
+      } while (hall_state);
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)<900)?1:0;
+        Serial.println(analogRead(A3));
+      } while (!hall_state);
+    } else {
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)<900)?1:0;
+        Serial.println(analogRead(A3));
+      } while (!hall_state);
+    }
+  }
+  stop();
+}
+
+void rotate_times_pho(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
+  //Serial.println(analogRead(A3));
+  int init_hall_state = (analogRead(A3)>(max_photo_l+min_photo_l)/2)?1:0;
+  int hall_state = 0;
+  while (clicks--) {
+    if (init_hall_state) {
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(A3));
+      } while (hall_state);
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(A3));
+      } while (!hall_state);
+    } else {
+      do {
+        fun_rot();
+        hall_state = (analogRead(A3)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(A3));
+      } while (!hall_state);
+    }
+  }
+  stop();
+}
+
+void rotate_times_photo_l(int clicks, void (*fun_rot)()) {
+  int init_hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
+  int hall_state = 0;
+  while (clicks--) {
+    if (init_hall_state) {
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(photo_pin_l));
+      } while (hall_state);
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(photo_pin_l));
+      } while (!hall_state);
+    } else {
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
+        Serial.println(analogRead(photo_pin_l));
+      } while (!hall_state);
+    }
+  }
+  stop();
+}
+
+void rotate_times_photo_r(int clicks, void (*fun_rot)()) {
+  int init_hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
+  int hall_state = 0;
+  while (clicks--) {
+    if (init_hall_state) {
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
+        Serial.println(analogRead(photo_pin_r));
+      } while (hall_state);
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
+        Serial.println(analogRead(photo_pin_r));
+      } while (!hall_state);
+    } else {
+      do {
+        fun_rot();
+        hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
+        Serial.println(analogRead(photo_pin_r));
+      } while (!hall_state);
+    }
+  }
+  stop();
 }
 
 void loop() {
@@ -489,6 +653,13 @@ void loop() {
 
   // delay(1000);
 
+  // rotate_times(1, forw, read_hall_r);
+  // delay(1000);
+
+  // clock45();
+  // delay(2000);
+  // counter45();
+  // delay(2000);
 
   // rotate_times(7, rotate_counterclockwise, read_hall_l);
   // delay(5000);
@@ -499,14 +670,10 @@ void loop() {
   // delay(5000);
 
 
-  // left();
+  // forw();
   // read_hall(2000);
   // stop();
   // delay(1000);
-
-
-
-
 
   // rotate_times(1, forw, read_hall_r); //21 cm
   // delay(1000);
@@ -529,4 +696,25 @@ void loop() {
   // Serial.print(", ");
   // Serial.println(hall_r);
   // delay(100);
+
+
+  // left();
+  // Serial.println(analogRead(photo_pin_l));
+  // delay(50);
+  
+  //rotate_times_photo(2, left, read_hall_r);
+  //rotate_ph(1, left, read_photo_l);
+  //rotate_times_photo_l(1, left);
+  //rotate_times_photo_r(2, right);
+  //rotate_times_photo_l(10, forw); //+- 11cm
+
+  // rotate_times_photo_l(8, rotate_clockwise); //+ 45°
+  // delay(1000);
+  // rotate_times_photo_l(8, rotate_counterclockwise); //- 45°
+  // delay(1000);
+
+  rotate_times_photo_l(15, rotate_clockwise); //+ 45°
+  delay(1000);
+  rotate_times_photo_l(16, rotate_counterclockwise); //- 45°
+  delay(1000);
 }
