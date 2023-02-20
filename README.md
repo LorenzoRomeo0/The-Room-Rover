@@ -27,3 +27,6 @@ Data stimata di presentazione: Febbraio 2023
 
 ### Circuito 
 ![](The_Room_Rover.png)
+
+## Circuito con supporto all'encoder ottico
+![](The_Room_Rover_optical_encoder.png)

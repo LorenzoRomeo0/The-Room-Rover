@@ -3,7 +3,6 @@
 #define ENABLE_RADAR
 #define ENABLE_MOTORS
 
-
 // circonferenza ruote (cm)
 #define WHELL_CIRC 21
 
@@ -18,6 +17,7 @@
 #define hall_pin_r A0
 #define hall_pin_l A1
 
+// sensori encoder ottico
 #define photo_pin_r A4
 #define photo_pin_l A3
 
@@ -38,21 +38,22 @@ int min_photo_l = 0;
 #define SIZE 21
 
 //#define MEASURE_NR 21
-#define MEASURE_NR 10
+#define MEASURE_NR 10       // numero di misurazioni che deve prendere il radar
+#define SCAN_STEP_TIME 400  // tempo d'attesa minimo tra una misurazione e l'altra
 
-int arr[MEASURE_NR];
+int arr[MEASURE_NR];    // array d'appoggio su cui inserire le misurazioni prese con il radar
 
 #define UNIT 10
-#define SCAN_STEP_TIME 400
 
 // variabili per il sensore ultrasonico
-long duration;  // variable for the duration of sound wave
-int distance;   // variable for the distance measurement
+long duration;  // variabile della durata di ritorno dell'impulso sonoro
+int distance;   // variable per contenere la misurazione della distanza calcolata
 
 // variabili per il servo
 Servo myservo;
-int pos = 0;  //posizione corrente del servo
+int pos = 0;    //posizione corrente del servo
 
+// orientamenti validi per il rover. "North" è da interpretare come l'orientamento d'avvio del rover, non come nord magnetico.
 enum orientation { North,
                    South,
                    East,
@@ -62,7 +63,7 @@ struct location {
   enum orientation orient;  //orientamento del rover
   int x;                    // x corrente
   int y;                    // y corrente
-  short **map;              //matrice che rappresenta la mappa dell'ambiente circostante
+  short **map;              //matrice che rappresenta la mappa dell'ambiente circostante. Assume valore -1 dove ci sono ostacoli, 0 altrimenti.
 };
 struct location *loc;
 
@@ -85,7 +86,7 @@ void p_map() {
 
 //inizializza la matrice della mappa. Imposta i limiti della matrice a -1 (ostacolo invalicabile)
 void init_loc() {
-  loc = malloc(sizeof(struct location));
+  loc = (location*) malloc(sizeof(struct location));
   loc->orient=North;
   loc->x = SIZE / 2;
   loc->y = SIZE / 2;
@@ -170,7 +171,6 @@ void scan() {
 //  steps: il numero di misurazioni da prendere
 //  arr: puntatore all'array in cui verranno memorizzate le misurazioni (viene riallocato)
 void scanSteps(int steps, int arr[MEASURE_NR]) {
-
   for (int i = 0; i < steps; i++) {
     pos = 180 / steps * i;
     myservo.write(pos);
@@ -185,18 +185,17 @@ void scanSteps(int steps, int arr[MEASURE_NR]) {
   }
 }
 
-void calc_radians(int size, double **arr) {
-  *arr = (double *)calloc(size, sizeof(double));
-  for (int i = 0; i < size; i++)
-    (*arr)[i] = (180 / (size)*i) * 2 * 3.14159265358979323846 / 360;
-}
-
+// funzione che popola l'array theta con angoli divisi equamente su 180°.
+// es. calc_angles(10, theta) -> theta = [0, 18, 36, 54, 72, 90, 108, 126, 144, 162]
 void calc_angles(int size, double theta[]) {
-  //*theta = (double *)calloc(size, sizeof(double));
   for (int i = 0; i < size; i++)
     theta[i] = 180 / (size)*i;
 }
 
+// aggiorna la mappa con le misurazioni contenute nell'array r.
+// params:  size: la dimensione dell'array r
+//          r: l'array contenente le nuove misurazioni
+// modifies: loc->map
 void updateMap(int size, int r[]) {
   double theta[size];
   calc_angles(size, theta);
@@ -263,11 +262,13 @@ void backw() {
   bleft();
 }
 
+// ruota in senso antiorario
 void rotate_counterclockwise() {
   right();
   bleft();
 }
 
+// ruota in senso orario
 void rotate_clockwise() {
   left();
   bright();
@@ -423,7 +424,7 @@ void rotate_times_2x(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
 //   stop();
 // }
 
-// Riposiziona le ruote sul primo punto di appoggio disponibile
+// riposiziona le ruote sul primo punto di appoggio (magnete) disponibile
 void calibrate_hall() {
   rotate_times(1, right, read_hall_r);
   rotate_times(1, left, read_hall_l);
@@ -458,16 +459,17 @@ void calibrate_photo(){
   char buf[20];
   sprintf(buf, "r=[%d,%d,%d] l=[%d,%d,%d]", minr, maxr, (minr+maxr)/2, minl, maxl, (minl+maxl)/2);
   Serial.println(buf); 
-  free(buf); 
+  //free(buf); 
 }
 
-//riposiziona gli encoder ottici delle ruote
+// riposiziona gli encoder ottici delle ruote
 void calibrate_optical(){
   rotate_times_photo_l(1, left);
   rotate_times_photo_r(1, right);
 }
 
 // effettua clicks passi utilizzando la funzione di rotazione fun_rot, utilizzando l'encoder ottico sinistro
+// utilizziamo come threshold del rilevamento di una luce la media tra max_photo_l e min_photo_l.
 void rotate_times_photo_l(int clicks, void (*fun_rot)()) {
   int init_hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
   int hall_state = init_hall_state;
@@ -492,6 +494,7 @@ void rotate_times_photo_l(int clicks, void (*fun_rot)()) {
 }
 
 // effettua clicks passi utilizzando la funzione di rotazione fun_rot, utilizzando l'encoder ottico destro
+// utilizziamo come threshold del rilevamento di una luce la media tra max_photo_r e min_photo_r.
 void rotate_times_photo_r(int clicks, void (*fun_rot)()) {
   int init_hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
   int hall_state = 0;
@@ -517,7 +520,6 @@ void rotate_times_photo_r(int clicks, void (*fun_rot)()) {
   }
   stop();
 }
-
 
 // effettua la scansione dell'area circostante, utilizzando gli encoder ottici per posizionare le ruote
 //  requires: orientamento del rover a Nord
@@ -569,7 +571,6 @@ void read360_hall(){
   loc->orient=North;
 }
 
-
 void setup() {
   pinMode(A3, INPUT);
 
@@ -611,7 +612,6 @@ void setup() {
 
   delay(2000);  //per riposizionare la macchinina
 }
-
 
 int state = 1; // lo stato corrente della macchina a stati finiti
 void loop() {
