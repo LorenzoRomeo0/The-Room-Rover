@@ -30,3 +30,12 @@ Data stimata di presentazione: Febbraio 2023
 
 ## Circuito con supporto all'encoder ottico
 ![](The_Room_Rover_optical_encoder.png)
+
+## Dettaglio encoder ottico
+![](encoder.jpg)
+
+## Dettaglio sensore ad effetto hall
+![](hall.jpg)
+
+## Dettaglio radar
+![](radar.jpg)
