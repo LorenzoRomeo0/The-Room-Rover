@@ -474,6 +474,7 @@ void rotate_times_photo_l(int clicks, void (*fun_rot)()) {
   int init_hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
   int hall_state = init_hall_state;
   while (clicks--) {
+    Serial.println(clicks);
     if (init_hall_state) {
       while(hall_state){
         fun_rot();
@@ -530,11 +531,11 @@ void read360_optical(){
   updateMap(MEASURE_NR, arr);
 
   // rotate_times_photo_l(15, rotate_counterclockwise); //+ 180°
-  // rotate_times_photo_l(17, rotate_counterclockwise); //+ 180°
-  for(int i=0; i<17 ; i++){
-    rotate_times_photo_l(1, rotate_counterclockwise); //+ 180°
-    delay(300);
-  }
+  rotate_times_photo_l(17, rotate_counterclockwise); //+ 180°
+  // for(int i=0; i<17 ; i++){
+  //   rotate_times_photo_l(1, rotate_counterclockwise); //+ 180°
+  //   delay(300);
+  // }
   loc -> orient = South;
 
   scanSteps(MEASURE_NR, arr);  
@@ -543,15 +544,15 @@ void read360_optical(){
   p_map();
   
   // rotate_times_photo_l(15, rotate_clockwise); //- 180°
-  // rotate_times_photo_l(17, rotate_clockwise); //- 180°
-  for(int i=0; i<17; i++){
-    rotate_times_photo_l(1, rotate_clockwise); //- 180°
-    delay(300);
-  }
+  rotate_times_photo_l(17, rotate_clockwise); //- 180°
+  // for(int i=0; i<17; i++){
+  //   rotate_times_photo_l(1, rotate_clockwise); //- 180°
+  //   delay(300);
+  // }
   loc->orient=North;
 }
 
-// effettua la scansione dell'area circostante, utilizzandoi sensori di hall per posizionare le ruote
+// effettua la scansione dell'area circostante, utilizzando i sensori di hall per posizionare le ruote
 //  requires: orientamento del rover a Nord
 void read360_hall(){
   scanSteps(MEASURE_NR, arr);
@@ -566,6 +567,7 @@ void read360_hall(){
   printa(MEASURE_NR, arr);
   updateMap(MEASURE_NR, arr);
   p_map();
+  
   
   rotate_times(7, rotate_clockwise, read_hall_l); //- 180°
   loc->orient=North;
@@ -604,7 +606,7 @@ void setup() {
   myservo.write(pos);   //riposiziona servo
 
   calibrate_photo();    //otteniamo valori di luce massimi e minimi
-  //calibrate_hall();   //riposizioniamo le ruote
+  calibrate_hall();     //riposizioniamo le ruote
   calibrate_optical();
 
 
@@ -617,10 +619,25 @@ int state = 1; // lo stato corrente della macchina a stati finiti
 void loop() {
   
   // ------
-  if(state == 1){ //stato 1: scan iniziale
-    read360_optical();
+  switch(state){
+    case 0:                       //stato 0: test
+      //rotate_times_photo_l(10, forw);       //+- 11cm
+      //rotate_times(1, right, read_hall_r);  //21 cm
+      rotate_times(1, left, read_hall_l);   //21 cm
+      break;
+    case 1:                       //stato 1: scan dell'ambiente utilizzando gli encoder ottici
+      read360_optical();
+      break;
+
+    case 2:                       //stato 2: scan dell'ambiente utilizzando i sensori ad effetto hall
+      read360_hall();
+      break;
+
+    default:
+      Serial.println("errore macchina a stati finiti.");
   }
   
+  delay(1000);
 
   // scanSteps(MEASURE_NR, arr);
 
@@ -640,7 +657,6 @@ void loop() {
   // rotate_times_photo_l(15, rotate_clockwise); //+ 45°
   // loc->orient=North;
 
-  delay(1000);
 
   //------
 
@@ -697,7 +713,7 @@ void loop() {
   //rotate_ph(1, left, read_photo_l);
   //rotate_times_photo_l(1, left);
   // rotate_times_photo_l(1, forw);
-  //rotate_times_photo_l(10, forw); //+- 11cm
+  
 
   // rotate_times_photo_l(8, rotate_clockwise); //+ 45°
   // delay(1000);
