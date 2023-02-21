@@ -39,3 +39,7 @@ Data stimata di presentazione: Febbraio 2023
 
 ## Dettaglio radar
 ![](radar.jpg)
+
+## H-bridge N-MOSFET
+![](h-bridge.png)
+(made with tinkercad)
