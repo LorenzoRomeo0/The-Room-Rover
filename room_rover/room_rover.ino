@@ -38,7 +38,7 @@ int min_photo_l = 0;
 #define UNIT 10             //  la dimensione in centimetri di una cella della matrice della mappa. es: UNIT = 10 -> cella = 10 cm; SIZE = 21 -> dimensione della mappa = 21 * 10 cm
 
 // radar
-#define MEASURE_NR 20       // numero di misurazioni che deve prendere il radar
+#define MEASURE_NR 20       // numero di misurazioni che deve prendere il radar  
 #define SCAN_STEP_TIME 400  // tempo d'attesa minimo tra una misurazione e l'altra
 
 int arr[MEASURE_NR];        // array d'appoggio su cui inserire le misurazioni prese con il radar
@@ -519,8 +519,11 @@ void read360_optical(){
   printa(MEASURE_NR, arr);
   updateMap(MEASURE_NR, arr);
 
+  #ifndef BROKEN_RIGHT_MOTOR
   rotate_times_photo_l(17, rotate_counterclockwise); //+ 180°
-
+  #else
+  rotate_times_photo_l(43, rotate_counterclockwise); //+ 180°
+  #endif
   loc -> orient = South;
 
   scanSteps(MEASURE_NR, arr);  
@@ -528,7 +531,13 @@ void read360_optical(){
   updateMap(MEASURE_NR, arr);
   p_map();
 
+
+  #ifndef BROKEN_RIGHT_MOTOR
   rotate_times_photo_l(17, rotate_clockwise); //- 180°
+  #else
+  rotate_times_photo_l(43, rotate_clockwise); //- 180°
+  #endif
+  
 
   loc->orient=North;
 }
@@ -593,12 +602,10 @@ int entrypoint = 1;    // scelta del nodo iniziale della macchina a stati finiti
 int current_state = entrypoint;   // lo stato corrente della macchina a stati finiti
 
 //definizione della macchina a stati finiti:
-// stato 0 (entrypoint): visualizzazione demo delle funzionalità del rover
 // stato 1 (entrypoint): scan dell'ambiente utilizzando gli encoder ottici
 // stato 2 (entrypoint): scan dell'ambiente utilizzando i sensori ad effetto hall
 // stato 3: esplorazione dell'ambiente
 
-// 0 -> 0 -> ...
 // 1 -> 3 -> 1 -> ...
 // 2 -> 3 -> 2 -> ...
 
@@ -606,12 +613,6 @@ void loop() {
   Serial.println(current_state);
   // ------
   switch(current_state){
-    case 0:                       //stato 0 (entrypoint): demo
-      Serial.println("demo");
-      //demo();
-      current_state = 0;          //  0 -> 0
-      break;
-
     case 1:                       //stato 1 (entrypoint): scan dell'ambiente utilizzando gli encoder ottici
       read360_optical();
       current_state = 3;          //  1 -> 3
