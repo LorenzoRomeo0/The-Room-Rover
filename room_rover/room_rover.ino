@@ -3,15 +3,14 @@
 #define ENABLE_RADAR
 #define ENABLE_MOTORS
 
-// circonferenza ruote (cm)
-#define WHELL_CIRC 21
+#define BROKEN_RIGHT_MOTOR
 
 // servo
 #define SERVO_PIN 5
 
 // sensore ultrasonico
-#define echoPin 2
-#define trigPin 3
+#define echo_pin 2
+#define trig_pin 3
 
 // sensori hall effect
 #define hall_pin_r A0
@@ -34,31 +33,27 @@ int min_photo_l = 0;
 #define lf 11  // left forwards
 #define lb 12  // left backwards
 
-// dimensioni della mappa
-#define SIZE 21
+// mappa
+#define SIZE 21             // dimensione dei lati della mappa 
+#define UNIT 10             //  la dimensione in centimetri di una cella della matrice della mappa. es: UNIT = 10 -> cella = 10 cm; SIZE = 21 -> dimensione della mappa = 21 * 10 cm
 
-//#define MEASURE_NR 21
-#define MEASURE_NR 10       // numero di misurazioni che deve prendere il radar
+// radar
+#define MEASURE_NR 20       // numero di misurazioni che deve prendere il radar
 #define SCAN_STEP_TIME 400  // tempo d'attesa minimo tra una misurazione e l'altra
 
-int arr[MEASURE_NR];    // array d'appoggio su cui inserire le misurazioni prese con il radar
-
-#define UNIT 10
-
-// variabili per il sensore ultrasonico
-long duration;  // variabile della durata di ritorno dell'impulso sonoro
-int distance;   // variable per contenere la misurazione della distanza calcolata
+int arr[MEASURE_NR];        // array d'appoggio su cui inserire le misurazioni prese con il radar
 
 // variabili per il servo
 Servo myservo;
 int pos = 0;    //posizione corrente del servo
+
 
 // orientamenti validi per il rover. "North" è da interpretare come l'orientamento d'avvio del rover, non come nord magnetico.
 enum orientation { North,
                    South,
                    East,
                    West };
-
+// struttura contenente le informazioni sulla posizione del rover e la mappa.
 struct location {
   enum orientation orient;  //orientamento del rover
   int x;                    // x corrente
@@ -68,6 +63,7 @@ struct location {
 struct location *loc;
 
 // stampa la mappa (sul monitor seriale).
+// stampa "x" in presenza di ostacoli e "O" nella posizione corrente del rover
 void p_map() {
   char buf[5];
   for (byte i = 0; i < SIZE; i++) {
@@ -84,7 +80,7 @@ void p_map() {
   }
 }
 
-//inizializza la matrice della mappa. Imposta i limiti della matrice a -1 (ostacolo invalicabile)
+//inizializza la matrice della mappa. Imposta i limiti della matrice a -1.
 void init_loc() {
   loc = (location*) malloc(sizeof(struct location));
   loc->orient=North;
@@ -122,12 +118,14 @@ void printa_d(size_t size, double arr[]) {
 
 // mostra sul monitor seriale la distanza misurata dal sensore ultrasonico in centimetri
 void readDistance() {
-  digitalWrite(trigPin, LOW);
+  long duration;  // variabile della durata di ritorno dell'impulso sonoro
+  int distance;   // variable per contenere la misurazione della distanza calcolata 
+  digitalWrite(trig_pin, LOW);
   delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trig_pin, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
+  digitalWrite(trig_pin, LOW);
+  duration = pulseIn(echo_pin, HIGH);
   distance = duration * 0.034 / 2;
   Serial.print("Distance: ");
   Serial.print(distance);
@@ -136,15 +134,16 @@ void readDistance() {
 
 // restituisce la distanza misurata dal sensore ultrasonico in centimetri
 int readDistance_int() {
-
-  digitalWrite(trigPin, LOW);
+  long duration;  // variabile della durata di ritorno dell'impulso sonoro
+  int distance;   // variable per contenere la misurazione della distanza calcolata
+  digitalWrite(trig_pin, LOW);
   delayMicroseconds(2);
 
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trig_pin, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trig_pin, LOW);
 
-  duration = pulseIn(echoPin, HIGH);
+  duration = pulseIn(echo_pin, HIGH);
 
   distance = duration * 0.034 / 2;
   return distance;
@@ -152,14 +151,13 @@ int readDistance_int() {
 
 // scan deprecato
 void scan() {
-  for (pos = 0; pos <= 180; pos += 1) {  // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    myservo.write(pos);  // tell servo to go to position in variable 'pos'
+  for (pos = 0; pos <= 180; pos += 1) {  
+    myservo.write(pos);  
     readDistance();
     delay(15);  // waits 15ms for the servo to reach the position
   }
-  for (pos = 180; pos >= 0; pos -= 1) {  // goes from 180 degrees to 0 degrees
-    myservo.write(pos);                  // tell servo to go to position in variable 'pos'
+  for (pos = 180; pos >= 0; pos -= 1) {  
+    myservo.write(pos);                  
     readDistance();
     delay(15);  // waits 15ms for the servo to reach the position
   }
@@ -210,16 +208,12 @@ void updateMap(int size, int r[]) {
       x = (r[i] / UNIT) * cos(theta[i] * M_PI / 180) + loc->x;
       y = (r[i] / UNIT) * sin(theta[i] * M_PI / 180) + loc->y;
     }
-    // int x = (r[i] / UNIT) * cos(theta[i] * M_PI / 180) + loc->x;
-    // int y = (r[i] / UNIT) * sin(theta[i] * M_PI / 180) + loc->y;
-    // loc->map[x][y] = -1; // west
 
     //printf("[%f] (%d) -> x=%d y=%d\n", theta[i], r[i], x, y);
     if (x < SIZE && x >= 0 && y < SIZE && y >= 0) {
       loc->map[y][x] = -1;
     }
   }
-  //free(theta);
 }
 
 // ferma le ruote
@@ -305,7 +299,6 @@ void wheels_test() {
 void wheels_test_hall() {
   right();
   read_hall(2000);
-
 
   stop();
   bright();
@@ -405,34 +398,32 @@ void rotate_times_2x(int clicks, void (*fun_rot)(), int (*fun_hall)()) {
   stop();
 }
 
-// int delay_45= 150;
-// void clock45(){
-//   rotate_times(3, rotate_clockwise, read_hall_r);
-//   //delay(1000);
-//   rotate_clockwise();
-//   delay(delay_45);
-//   stop();
-//   //rotate_times_2x(1, rotate_clockwise, read_hall_r);
+// gira il rover di 45° in senso orario
+void clock45(){
+  rotate_times(3, rotate_clockwise, read_hall_r);
+  stop();
+}
 
-// }
-
-// void counter45(){
-//   rotate_times(3, rotate_counterclockwise, read_hall_r);
-//   //delay(1000);
-//   rotate_counterclockwise();
-//   delay(delay_45);
-//   stop();
-// }
+// gira il rover di 45° in senso antiorario
+void counter45(){
+  rotate_times(3, rotate_counterclockwise, read_hall_r);
+  stop();
+}
 
 // riposiziona le ruote sul primo punto di appoggio (magnete) disponibile
 void calibrate_hall() {
-  rotate_times(1, right, read_hall_r);
+
+  #ifndef BROKEN_RIGHT_MOTOR
+    rotate_times(1, right, read_hall_r);
+  #endif
+  
   rotate_times(1, left, read_hall_l);
 }
 
-// ottiene i valori correnti di luminosità massima/minima per entrambi gli encoder ottici.
+// ottiene i valori correnti di luminosità massima/minima per entrambi gli encoder ottici. Attenzione, ruota le ruote in avanti per almeno val_num * 50 ms.
+//  params: val_num: il numero di valori di campionamento della luce da prendere per la calibrazione
 //  modifies: min_photo_l, max_photo_l, min_photo_r, max_photo_r
-void calibrate_photo(){
+void calibrate_photo(int val_num){
   int maxl = 0;
   int minl = 2000;
   int maxr = 0;
@@ -441,7 +432,7 @@ void calibrate_photo(){
 
   forw();
 
-  for(int i=0; i<20; i++){
+  for(int i=0; i<val_num; i++){
     current_val = analogRead(photo_pin_l);
     if(current_val > maxl) maxl=current_val;
     if(current_val < minl) minl=current_val;
@@ -459,13 +450,15 @@ void calibrate_photo(){
   char buf[20];
   sprintf(buf, "r=[%d,%d,%d] l=[%d,%d,%d]", minr, maxr, (minr+maxr)/2, minl, maxl, (minl+maxl)/2);
   Serial.println(buf); 
-  //free(buf); 
 }
 
 // riposiziona gli encoder ottici delle ruote
 void calibrate_optical(){
   rotate_times_photo_l(1, left);
+
+  #ifndef BROKEN_RIGHT_MOTOR
   rotate_times_photo_r(1, right);
+  #endif
 }
 
 // effettua clicks passi utilizzando la funzione di rotazione fun_rot, utilizzando l'encoder ottico sinistro
@@ -474,7 +467,6 @@ void rotate_times_photo_l(int clicks, void (*fun_rot)()) {
   int init_hall_state = (analogRead(photo_pin_l)>(max_photo_l+min_photo_l)/2)?1:0;
   int hall_state = init_hall_state;
   while (clicks--) {
-    Serial.println(clicks);
     if (init_hall_state) {
       while(hall_state){
         fun_rot();
@@ -504,18 +496,15 @@ void rotate_times_photo_r(int clicks, void (*fun_rot)()) {
       do {
         fun_rot();
         hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
-        // Serial.println(analogRead(photo_pin_r));
       } while (hall_state);
       do {
         fun_rot();
         hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
-        // Serial.println(analogRead(photo_pin_r));
       } while (!hall_state);
     } else {
       do {
         fun_rot();
         hall_state = (analogRead(photo_pin_r)>(max_photo_r+min_photo_r)/2)?1:0;
-        // Serial.println(analogRead(photo_pin_r));
       } while (!hall_state);
     }
   }
@@ -530,29 +519,21 @@ void read360_optical(){
   printa(MEASURE_NR, arr);
   updateMap(MEASURE_NR, arr);
 
-  // rotate_times_photo_l(15, rotate_counterclockwise); //+ 180°
   rotate_times_photo_l(17, rotate_counterclockwise); //+ 180°
-  // for(int i=0; i<17 ; i++){
-  //   rotate_times_photo_l(1, rotate_counterclockwise); //+ 180°
-  //   delay(300);
-  // }
+
   loc -> orient = South;
 
   scanSteps(MEASURE_NR, arr);  
   printa(MEASURE_NR, arr);
   updateMap(MEASURE_NR, arr);
   p_map();
-  
-  // rotate_times_photo_l(15, rotate_clockwise); //- 180°
+
   rotate_times_photo_l(17, rotate_clockwise); //- 180°
-  // for(int i=0; i<17; i++){
-  //   rotate_times_photo_l(1, rotate_clockwise); //- 180°
-  //   delay(300);
-  // }
+
   loc->orient=North;
 }
 
-// effettua la scansione dell'area circostante, utilizzando i sensori di hall per posizionare le ruote
+// effettua la scansione dell'area circostante, utilizzando i sensori di hall per posizionare le ruote (il sensore sinistro)
 //  requires: orientamento del rover a Nord
 void read360_hall(){
   scanSteps(MEASURE_NR, arr);
@@ -568,18 +549,16 @@ void read360_hall(){
   updateMap(MEASURE_NR, arr);
   p_map();
   
-  
   rotate_times(7, rotate_clockwise, read_hall_l); //- 180°
   loc->orient=North;
 }
 
 void setup() {
-  pinMode(A3, INPUT);
 
   #ifdef ENABLE_RADAR
   myservo.attach(SERVO_PIN);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(trig_pin, OUTPUT);
+  pinMode(echo_pin, INPUT);
   #endif
   #ifdef ENABLE_MOTORS
   pinMode(rf, OUTPUT);
@@ -594,43 +573,58 @@ void setup() {
   pinMode(photo_pin_l, INPUT);
   pinMode(photo_pin_r, INPUT);
 
-  //Serial.begin(9600);
   Serial.begin(19200);
-  //Serial.begin(31250);
 
   //inizializza e visualizza mappa
   init_loc();
   p_map();
 
-  Serial.println("---begin---");
-  myservo.write(pos);   //riposiziona servo
+  myservo.write(pos);     //riposiziona servo
 
-  calibrate_photo();    //otteniamo valori di luce massimi e minimi
-  calibrate_hall();     //riposizioniamo le ruote
+  calibrate_photo(20);    //otteniamo valori di luce massimi e minimi dell'ambiente circostante
+  calibrate_hall();       //riposizioniamo le ruote
   calibrate_optical();
 
-
-
-
-  delay(2000);  //per riposizionare la macchinina
+  Serial.println("---begin---");
+  delay(2000);            //per riposizionare il rover
 }
 
-int state = 1; // lo stato corrente della macchina a stati finiti
+int entrypoint = 1;    // scelta del nodo iniziale della macchina a stati finiti
+int current_state = entrypoint;   // lo stato corrente della macchina a stati finiti
+
+//definizione della macchina a stati finiti:
+// stato 0 (entrypoint): visualizzazione demo delle funzionalità del rover
+// stato 1 (entrypoint): scan dell'ambiente utilizzando gli encoder ottici
+// stato 2 (entrypoint): scan dell'ambiente utilizzando i sensori ad effetto hall
+// stato 3: esplorazione dell'ambiente
+
+// 0 -> 0 -> ...
+// 1 -> 3 -> 1 -> ...
+// 2 -> 3 -> 2 -> ...
+
 void loop() {
-  
+  Serial.println(current_state);
   // ------
-  switch(state){
-    case 0:                       //stato 0: test
-      //rotate_times_photo_l(10, forw);       //+- 11cm
-      //rotate_times(1, right, read_hall_r);  //21 cm
-      rotate_times(1, left, read_hall_l);   //21 cm
-      break;
-    case 1:                       //stato 1: scan dell'ambiente utilizzando gli encoder ottici
-      read360_optical();
+  switch(current_state){
+    case 0:                       //stato 0 (entrypoint): demo
+      Serial.println("demo");
+      //demo();
+      current_state = 0;          //  0 -> 0
       break;
 
-    case 2:                       //stato 2: scan dell'ambiente utilizzando i sensori ad effetto hall
+    case 1:                       //stato 1 (entrypoint): scan dell'ambiente utilizzando gli encoder ottici
+      read360_optical();
+      current_state = 3;          //  1 -> 3
+      break;
+
+    case 2:                       //stato 2 (entrypoint): scan dell'ambiente utilizzando i sensori ad effetto hall
       read360_hall();
+      current_state = 3;          //  2 -> 3
+      break;
+
+    case 3:                       //stato 3: esplorazione ambientale
+      //esplorazione ambientale
+      current_state = entrypoint; //  ritorna allo stato iniziale
       break;
 
     default:
@@ -660,32 +654,29 @@ void loop() {
 
   //------
 
-  // rotate_times(1, forw, read_hall_r);
-  // delay(1000);
-
+  // test per rotazione di 45°
   // clock45();
   // delay(2000);
   // counter45();
   // delay(2000);
 
+  // test di rotazione di 180°
   // rotate_times(7, rotate_counterclockwise, read_hall_l);
   // delay(5000);
   // rotate_times(7, rotate_clockwise, read_hall_l);
   // delay(5000);
   
-  // rotate_times(4, forw, read_hall_r);
-  // delay(5000);
-
-
+  // test per sensori di hall
   // forw();
   // read_hall(2000);
   // stop();
   // delay(1000);
 
+  // test rotazione con sensori di hall
   // rotate_times(1, forw, read_hall_r); //21 cm
   // delay(1000);
 
-
+  //test per il servo
   // myservo.write(0);
   // delay(400);
   // myservo.write(90);
@@ -693,35 +684,14 @@ void loop() {
   // myservo.write(170);
   // delay(400);
 
-  //scan();
-  //delay(100);
-  //myservo.write(0);
-
-  // int hall_r = digitalRead(hall_pin_r);
-  // int hall_l = digitalRead(hall_pin_l);
-  // Serial.print(hall_l);
-  // Serial.print(", ");
-  // Serial.println(hall_r);
-  // delay(100);
-
-
+  //test per l'encoder ottico
   // left();
   // Serial.println(analogRead(photo_pin_l));
   // delay(50);
-  
-  //rotate_times_photo(2, left, read_hall_r);
-  //rotate_ph(1, left, read_photo_l);
-  //rotate_times_photo_l(1, left);
-  // rotate_times_photo_l(1, forw);
-  
 
+  // test di rotazione di 45° utilizzando l'encoder ottico
   // rotate_times_photo_l(8, rotate_clockwise); //+ 45°
   // delay(1000);
   // rotate_times_photo_l(8, rotate_counterclockwise); //- 45°
-  // delay(1000);
-
-  // rotate_times_photo_l(15, rotate_clockwise); //+ 45°
-  // delay(1000);
-  // rotate_times_photo_l(16, rotate_counterclockwise); //- 45°
   // delay(1000);
 }
